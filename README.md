@@ -7,5 +7,5 @@
 克隆此项目：
 
 ```bash
-git clone https://github.com/yourusername/your-repo-name.git
+git clone https://github.com/s1eeping-king/Financial-Sentiment-Analysis.git
 ```

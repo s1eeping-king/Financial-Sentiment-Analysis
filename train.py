@@ -14,12 +14,22 @@ from visualization import (
     plot_learning_rate, plot_sentiment_distribution,
     plot_confidence_histogram
 )
+from loss_function import get_loss_function
+from benchmark import save_classification_metrics
 
 # 忽略警告，防止干扰输出
 warnings.filterwarnings("ignore")
 
 # Hyperparameters and Configuration
 CONFIG = {
+    'loss_function': 'focal',
+
+    # 'loss_function': 'cross_entropy',
+    # 'loss_function': 'focal',
+    # 'loss_function': 'label_smoothing',
+    # 'loss_function': 'weighted_cross_entropy',
+    # 'loss_function': 'dice',
+
     # Model hyperparameters
     'learning_rate': 2e-5,
     'dropout_rate': 0.3,
@@ -43,7 +53,7 @@ CONFIG = {
     },
     
     # Debug mode settings
-    'debug_mode': True,
+    'debug_mode': False,
     'debug': {
         'epochs': 2,
         'batch_size': 32,
@@ -64,6 +74,25 @@ def get_output_path(category, filename):
     """获取输出文件的完整路径"""
     return os.path.join(CONFIG['output_dir'], CONFIG['subdirs'][category], filename)
 
+class EarlyStopping:
+    def __init__(self, patience=3, min_delta=0):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.counter = 0
+        self.best_loss = None
+        self.should_stop = False
+        
+    def __call__(self, val_loss):
+        if self.best_loss is None:
+            self.best_loss = val_loss
+        elif val_loss > self.best_loss - self.min_delta:
+            self.counter += 1
+            if self.counter >= self.patience:
+                self.should_stop = True
+        else:
+            self.best_loss = val_loss
+            self.counter = 0
+
 def train_model_with_history(train_dataset, val_dataset, epochs=3, batch_size=16, learning_rate=2e-5, dropout_rate=0.3):
     """训练模型并记录训练历史"""
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -76,11 +105,14 @@ def train_model_with_history(train_dataset, val_dataset, epochs=3, batch_size=16
     model = model.to(device)
     
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
-    criterion = torch.nn.CrossEntropyLoss()
+    criterion = get_loss_function(CONFIG['loss_function'])
+    print(f"使用损失函数: {CONFIG['loss_function']}")
     
     train_losses = []
     val_accuracies = []
     learning_rates = []
+    
+    early_stopping = EarlyStopping(patience=3, min_delta=0.01)
     
     for epoch in range(epochs):
         epoch_start_time = time.time()
@@ -106,8 +138,9 @@ def train_model_with_history(train_dataset, val_dataset, epochs=3, batch_size=16
         train_losses.append(avg_train_loss)
         
         model.eval()
-        val_correct = 0
-        val_total = 0
+        all_preds = []
+        all_labels = []
+        val_loss = 0
         
         with torch.no_grad():
             for batch in val_loader:
@@ -116,25 +149,35 @@ def train_model_with_history(train_dataset, val_dataset, epochs=3, batch_size=16
                 labels = batch['labels'].to(device)
                 
                 outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+                loss = criterion(outputs, labels)
+                val_loss += loss.item()
                 _, predicted = torch.max(outputs.data, 1)
                 
-                val_total += labels.size(0)
-                val_correct += (predicted == labels).sum().item()
+                all_preds.extend(predicted.cpu().numpy())
+                all_labels.extend(labels.cpu().numpy())
         
-        val_accuracy = 100 * val_correct / val_total
-        val_accuracies.append(val_accuracy)
+        avg_val_loss = val_loss / len(val_loader)
+        # 如果是最后一轮或即将早停，保存为final_val，否则正常记录
+        is_final = early_stopping.counter + 1 >= early_stopping.patience
+        epoch_mark = 'final_val' if is_final else epoch + 1
+        accuracy, _ = save_classification_metrics(all_labels, all_preds, epoch_mark)
+        val_accuracies.append(accuracy)
         
         epoch_end_time = time.time()
         epoch_time = epoch_end_time - epoch_start_time
         
         print(f'Epoch {epoch + 1}/{epochs}')
         print(f'平均训练损失: {avg_train_loss:.4f}')
-        print(f'验证准确率: {val_accuracy:.2f}%')
+        print(f'验证准确率: {accuracy:.2f}%')
         print(f'本轮训练时间: {epoch_time:.2f}秒\n')
         
-        # 绘制训练过程图表
         plot_training_history(train_losses, val_accuracies)
         plot_learning_rate(learning_rates)
+        
+        early_stopping(avg_val_loss)
+        if early_stopping.should_stop:
+            print("触发早停")
+            break
     
     return model, train_losses, val_accuracies
 
@@ -258,7 +301,6 @@ def analyze_feature_importance(model, tokenizer, dataset, n_samples=100):
         feature_importance += hidden_states.mean(dim=1).abs().cpu().numpy()[0]
     
     feature_importance /= min(n_samples, len(dataset))
-    plot_feature_importance(feature_importance)
     
     return feature_importance
 
@@ -272,11 +314,10 @@ def main():
         print(f"错误: 找不到数据文件 {data_path}")
         return
     
-    print("正在准备数据...")
-    train_dataset, val_dataset, tokenizer = prepare_data(
+    print("准备数据...")
+    train_dataset, val_dataset, test_dataset, tokenizer = prepare_data(
         data_path, 
-        max_len=CONFIG['max_seq_length'],
-        train_split_ratio=CONFIG['train_split_ratio']
+        max_len=CONFIG['max_seq_length']
     )
     
     if CONFIG['debug_mode']:
@@ -316,11 +357,30 @@ def main():
     print(f"\n训练完成:")
     print(f"├── 总训练时间: {training_time:.2f}秒")
     print(f"└── 平均每轮时间: {training_time/CONFIG['epochs']:.2f}秒")
+    # 在测试集上评估
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=CONFIG['batch_size'])
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model.eval()
     
+    all_preds = []
+    all_labels = []
+    with torch.no_grad():
+        for batch in test_loader:
+            input_ids = batch['input_ids'].to(device)
+            attention_mask = batch['attention_mask'].to(device)
+            labels = batch['labels'].to(device)
+            
+            outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+            _, predicted = torch.max(outputs.data, 1)
+            
+            all_preds.extend(predicted.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
+
+    save_classification_metrics(all_labels, all_preds, epoch='final_test', save_dir='outputs/benchmark_results')
     save_model(model, tokenizer)
     
-    print("\n开始生成预测结果分析...")
-    texts, predictions, confidences = analyze_predictions(model, tokenizer, val_dataset)
+    print("\n开始生成测试集预测结果分析...")
+    analyze_predictions(model, tokenizer, test_dataset)  # 改用测试集进行最终分析
 
 if __name__ == "__main__":
     main()

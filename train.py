@@ -4,6 +4,7 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 from model import SentimentClassifier, prepare_data, predict_sentiment
+from transformers import DistilBertTokenizer
 
 # Hyperparameters and Configuration
 CONFIG = {
@@ -154,8 +155,6 @@ def save_model(model, tokenizer, model_dir='saved_model'):
 
 def load_model(model_dir='saved_model'):
     """加载保存的模型和分词器"""
-    from transformers import DistilBertTokenizer
-    
     # 检查模型目录是否存在
     if not os.path.exists(model_dir):
         print(f"错误: 找不到模型目录 {model_dir}")

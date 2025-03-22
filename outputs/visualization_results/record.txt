@@ -1,0 +1,35 @@
+初始配置：
+'loss_function': 'focal',
+'learning_rate': 2e-5,
+'batch_size': 64,
+'epochs': 10,
+'use_early_stopping': False,
+'dropout_rate': 0.3,
+
+对所有可变变量依次进行更换并训练模型：
+因为我们有四种数据集，因此我们决定使用同一配置以及同一random seed进行数据集划分，通过结果判断哪个数据集表现较好。
+1.比较数据集：使用初始配置训练模型，从对比看出Sentences_AllAgree.csv效果最好，且从描述里也有看出，此数据集情感分析具有着最高置信度，因此选择Sentences_AllAgree.csv作为后续数据集。
+
+并且通过多个数据集的训练结果来看，epoch数在8的时候，验证准确率收敛，通过早停机制也基本确定是在epoch7-9之间验证准确率收敛，因此我们决定将epoch设置为10，这样可以看到训练及验证的完整过程
+
+2.比较损失函数：
+    # 'loss_function': 'cross_entropy',
+    # 'loss_function': 'focal',
+    # 'loss_function': 'label_smoothing',
+    # 'loss_function': 'weighted_cross_entropy',
+    # 'loss_function': 'dice',
+结果：cross_entropy、label_smoothing、weighted_cross_entropy三者为最佳
+后续选用cross_entropy进行
+
+3.比较学习率：2e-6, 2e-5, 2e-4, 2e-3
+结果：2e-5效果最好
+后续使用：2e-5
+
+4.比较batch_size：8 16 32 64 128
+结果：都挺好，64和32最为平滑
+
+前一百个预测标签保存在了test_predictions.png || test_predictions.csv
+
+
+
+

@@ -1,86 +1,147 @@
-import torch
 import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
-from collections import Counter
-import pandas as pd
 import os
-from sklearn.metrics import confusion_matrix, classification_report
+import numpy as np
+import pandas as pd
 
-def plot_training_history(train_losses, val_accuracies):
-    """绘制训练历史图表"""
-    plt.figure(figsize=(12, 4))
-    
-    # 损失曲线
-    plt.subplot(1, 2, 1)
-    plt.plot(train_losses, label='Training Loss')
-    plt.title('Training Loss over Epochs')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.legend()
-    
-    # 准确率曲线
-    plt.subplot(1, 2, 2)
-    plt.plot(val_accuracies, label='Validation Accuracy')
-    plt.title('Validation Accuracy over Epochs')
-    plt.xlabel('Epoch')
-    plt.ylabel('Accuracy (%)')
-    plt.legend()
-    
-    plt.tight_layout()
-    plt.savefig('outputs/training_metrics/training_history.png')
-    plt.close()
+class TrainingVisualizer:
+    def __init__(self, output_dir):
+        """
+        初始化训练可视化器
+        
+        Args:
+            output_dir: 输出目录的路径
+        """
+        self.output_dir = os.path.join(output_dir, 'visualization_results')
+        self.metrics_dir = os.path.join(self.output_dir)
+        os.makedirs(self.metrics_dir, exist_ok=True)
+        
+        # 存储训练指标
+        self.train_losses = []
+        self.train_accuracies = []
+        self.test_accuracies = []
+        self.current_epoch = 0
+        
+    def update_metrics(self, train_loss, train_accuracy, test_accuracy):
+        """
+        更新训练指标
+        
+        Args:
+            train_loss: 当前epoch的平均训练损失
+            train_accuracy: 当前epoch的训练精确度
+            test_accuracy: 当前epoch的测试精确度
+        """
+        self.train_losses.append(train_loss)
+        self.train_accuracies.append(train_accuracy)
+        self.test_accuracies.append(test_accuracy)
+        self.current_epoch += 1
+        
+    def plot_training_metrics(self):
+        """绘制训练指标随epoch变化的曲线"""
+        epochs = range(1, self.current_epoch + 1)
+        
+        # 创建图表和子图
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
+        
+        # 左侧子图：训练损失
+        ax1.plot(epochs, self.train_losses, 'b-', label='Training Loss')
+        ax1.set_xlabel('Epochs')
+        ax1.set_ylabel('Loss')
+        ax1.set_title('Training Loss vs Epochs')
+        ax1.grid(True, alpha=0.3)
+        ax1.legend()
+        
+        # 右侧子图：训练和验证精确度
+        ax2.plot(epochs, self.train_accuracies, 'g-', label='Training Accuracy')
+        ax2.plot(epochs, self.test_accuracies, 'r-', label='Validation Accuracy')
+        ax2.set_xlabel('Epochs')
+        ax2.set_ylabel('Accuracy')
+        ax2.set_title('Training and Validation Accuracy vs Epochs')
+        ax2.grid(True, alpha=0.3)
+        ax2.legend()
+        
+        # 调整布局
+        plt.tight_layout()
+        
+        # 保存图像
+        save_path = os.path.join(self.metrics_dir, 'training_metrics.png')
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        print(f"训练指标图表已保存到: {save_path}")
+        
+    def get_current_metrics(self):
+        """获取最新的训练指标"""
+        if self.current_epoch > 0:
+            return {
+                'epoch': self.current_epoch,
+                'train_loss': self.train_losses[-1],
+                'train_accuracy': self.train_accuracies[-1],
+                'test_accuracy': self.test_accuracies[-1]
+            }
+        return None
 
-def plot_confusion_matrix(y_true, y_pred, classes):
-    """绘制混淆矩阵"""
-    cm = confusion_matrix(y_true, y_pred)
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=classes, yticklabels=classes)
-    plt.title('Confusion Matrix')
-    plt.ylabel('True Label')
-    plt.xlabel('Predicted Label')
-    plt.savefig('outputs/model_analysis/confusion_matrix.png')
-    plt.close()
-
-def plot_metrics_report(y_true, y_pred, classes):
-    """绘制分类报告"""
-    report = classification_report(y_true, y_pred, target_names=classes, output_dict=True)
-    df = pd.DataFrame(report).transpose()
-    plt.figure(figsize=(10, 6))
-    sns.heatmap(df.iloc[:-3, :].astype(float), annot=True, cmap='Blues')
-    plt.title('Classification Metrics')
-    plt.savefig('outputs/model_analysis/metrics_report.png')
-    plt.close()
-
-def plot_learning_rate(learning_rates):
-    """绘制学习率变化曲线"""
-    plt.figure(figsize=(10, 4))
-    plt.plot(learning_rates)
-    plt.title('Learning Rate over Training Steps')
-    plt.xlabel('Training Step')
-    plt.ylabel('Learning Rate')
-    plt.savefig('outputs/training_metrics/learning_rate.png')
-    plt.close()
-
-def plot_sentiment_distribution(predictions):
-    """绘制情感分布"""
-    plt.figure(figsize=(8, 6))
-    sns.countplot(x=predictions)
-    plt.title('Sentiment Distribution')
-    plt.xlabel('Sentiment')
-    plt.ylabel('Count')
-    plt.savefig('outputs/prediction_results/sentiment_distribution.png')
-    plt.close()
-
-def plot_confidence_histogram(confidences, predictions):
-    """绘制预测置信度直方图"""
-    plt.figure(figsize=(10, 6))
-    for sentiment in np.unique(predictions):
-        conf = [c for c, p in zip(confidences, predictions) if p == sentiment]
-        plt.hist(conf, bins=20, alpha=0.5, label=f'Sentiment {sentiment}')
-    plt.title('Prediction Confidence Distribution')
-    plt.xlabel('Confidence')
-    plt.ylabel('Count')
-    plt.legend()
-    plt.savefig('outputs/prediction_results/confidence_distribution.png')
-    plt.close() 
+    def visualize_test_predictions(self, texts, true_labels, predicted_labels, confidences, label_names=['positive', 'negative', 'neutral'], n_samples=100):
+        """
+        可视化测试集的预测结果
+        
+        Args:
+            texts: 输入文本列表
+            true_labels: 真实标签列表
+            predicted_labels: 预测标签列表
+            confidences: 预测置信度列表
+            label_names: 标签名称列表
+            n_samples: 要显示的样本数量
+        """
+        # 确保只取前n_samples个样本
+        n_samples = min(n_samples, len(texts))
+        texts = texts[:n_samples]
+        true_labels = true_labels[:n_samples]
+        predicted_labels = predicted_labels[:n_samples]
+        confidences = confidences[:n_samples]
+        
+        # 创建数据框
+        df = pd.DataFrame({
+            'Text': texts,
+            'True Label': [label_names[label] for label in true_labels],
+            'Predicted Label': [label_names[label] for label in predicted_labels],
+            'Confidence': confidences
+        })
+        
+        # 添加预测正确/错误的标记
+        df['Correct'] = df['True Label'] == df['Predicted Label']
+        
+        # 创建图表
+        plt.figure(figsize=(15, 10))
+        
+        # 创建表格
+        table = plt.table(
+            cellText=df.values,
+            colLabels=df.columns,
+            cellLoc='left',
+            loc='center',
+            cellColours=[['white' if correct else '#ffcccc' for _ in range(len(df.columns))] for correct in df['Correct']],
+            colColours=['#e6e6e6'] * len(df.columns)
+        )
+        
+        # 设置表格样式
+        table.auto_set_font_size(False)
+        table.set_fontsize(9)
+        table.scale(1.2, 1.5)
+        
+        # 隐藏坐标轴
+        plt.axis('off')
+        
+        # 添加标题
+        plt.title('')
+        
+        # 保存图表
+        save_path = os.path.join(self.metrics_dir, 'test_predictions.png')
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        print(f"测试集预测结果可视化已保存到: {save_path}")
+        
+        # 同时保存为CSV文件以便更好地查看
+        csv_path = os.path.join(self.metrics_dir, 'test_predictions.csv')
+        df.to_csv(csv_path, index=False)
+        print(f"测试集预测结果已保存到CSV文件: {csv_path}")

@@ -57,7 +57,6 @@ python train.py
    - Additional visualization analysis:
        - `outputs/model_analysis/`
        - `outputs/prediction_results/`
-       - `outputs/training_metrics/`
 
 ## Visualization Features
 

@@ -22,14 +22,16 @@
 后续选用cross_entropy进行
 
 3.比较学习率：2e-6, 2e-5, 2e-4, 2e-3
-结果：2e-5效果最好
+结果：2e-4，2e-5表现最好
 后续使用：2e-5
 
 4.比较batch_size：8 16 32 64 128
-结果：都挺好，64和32最为平滑
+结果：8最好
+
+最好的配置：
+'loss_function': 'cross_entropy',
+'learning_rate': 2e-5,
+'batch_size': 8,
 
 前一百个预测标签保存在了test_predictions.png || test_predictions.csv
-
-
-
 

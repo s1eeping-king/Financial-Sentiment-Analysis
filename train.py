@@ -38,7 +38,7 @@ CONFIG = {
     'max_seq_length': 315,
     
     # Training hyperparameters
-    'batch_size': 128,
+    'batch_size': 64,
     'epochs': 10,
     'train_split_ratio': 0.8,
     

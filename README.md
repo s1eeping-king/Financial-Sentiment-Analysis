@@ -1,87 +1,88 @@
-# 金融情绪分析项目
+# Financial Sentiment Analysis Project
 
-本项目旨在进行金融情绪分析，基于 **DistilBERT** 模型。我们使用金融句子数据集对模型进行训练，并进行情绪预测。
+This project aims to perform financial sentiment analysis based on the **DistilBERT** model. We train the model using a financial sentence dataset and predict sentiment.
 
-## 项目概述
+## Project Overview
 
-该项目实现了一个金融文本情感分析系统，可以将金融相关的文本分类为积极(positive)、消极(negative)或中性(neutral)。项目使用了轻量级的 DistilBERT 模型作为基础，并进行了针对金融领域的优化。
+This project implements a financial text sentiment analysis system that can classify finance-related text as positive, negative, or neutral. The project uses the lightweight DistilBERT model as a foundation and has been optimized for the financial domain.
 
-## 主要特性
+## Main Features
 
-- 基于 DistilBERT 的情感分析模型
-- 支持多种损失函数（交叉熵、Focal Loss、标签平滑等）
-- 实时训练可视化
-- 早停机制防止过拟合
-- 详细的预测结果分析和可视化
-- 模型性能评估和基准测试
+- DistilBERT-based sentiment analysis model
+- Support for multiple loss functions (Cross Entropy, Focal Loss, Label Smoothing, etc.)
+- Real-time training visualization
+- Early stopping mechanism to prevent overfitting
+- Detailed prediction result analysis and visualization
+- Model performance evaluation and benchmarking
 
-## 获取项目
+## Getting the Project
 
-克隆此项目：
+Clone this project:
 
-```bash
+```bash id=bash0
 git clone https://github.com/s1eeping-king/Financial-Sentiment-Analysis.git
 ```
 
-## 配置说明
+## Configuration
 
-在 `train.py` 中的 CONFIG 字典可以配置以下参数：
+The CONFIG dictionary in `train.py` can be configured with the following parameters:
 
-```python
+```python id=python1
 CONFIG = {
-    'loss_function': 'cross_entropy',  # 损失函数类型
-    'learning_rate': 2e-5,            # 学习率
-    'batch_size': 128,                # 批次大小
-    'epochs': 10,                     # 训练轮数
-    'use_early_stopping': False,      # 是否启用早停
-    # ... 其他配置项
+    'loss_function': 'cross_entropy',  # Loss function type
+    'learning_rate': 2e-5,            # Learning rate
+    'batch_size': 128,                # Batch size
+    'epochs': 10,                     # Number of training epochs
+    'use_early_stopping': False,      # Whether to enable early stopping
+    # ... other configuration items
 }
 ```
 
-## 使用方法
+## Usage
 
-1. 准备数据：
-   - 将数据集放在 `FinancialPhraseBank` 目录下
-   - 支持 CSV 格式，需包含文本和标签列
+1. Prepare the data:
+   - Place the dataset in the `FinancialPhraseBank` directory
+   - Supports CSV format, must include text and label columns
 
-2. 训练模型：
-```bash
+2. Train the model:
+
+```bash id=bash2
 python train.py
 ```
 
-3. 查看结果：
-   - 训练过程可视化及不同超参数组合的性能比较：`outputs/visualization_results/`
-   - 前100预测结果分析：`outputs/visualization_results/test_predictions.png`
-   - 性能评估报告：`outputs/benchmark_results/`
-   - 额外可视化分析：
+1. View results:
+   - Training process visualization and performance comparison of different hyperparameter combinations: `outputs/visualization_results/`
+   - Analysis of first 100 prediction results: `outputs/visualization_results/test_predictions.png`
+   - Performance evaluation report: `outputs/benchmark_results/`
+   - Additional visualization analysis:
        - `outputs/model_analysis/`
        - `outputs/prediction_results/`
        - `outputs/training_metrics/`
 
-## 可视化功能
+## Visualization Features
 
-项目提供了丰富的可视化功能：
+The project provides rich visualization features:
 
-1. 训练过程可视化：
-   - 训练损失曲线
-   - 训练准确率曲线
-   - 验证准确率曲线
+1. Training process visualization:
+   - Training loss curve
+   - Training accuracy curve
+   - Validation accuracy curve
 
-2. 预测结果分析：
-   - 前100个测试样本的详细预测结果
-   - 包含输入文本、真实标签、预测标签和置信度
-   - 错误预测标注
+2. Prediction result analysis:
+   - Detailed prediction results for the first 100 test samples
+   - Includes input text, true label, predicted label, and confidence
+   - Incorrect predictions are highlighted
 
-## 性能优化
+## Performance Optimization
 
-1. 早停机制：
-   - 可配置监控指标（验证准确率或训练损失）
-   - 可设置等待轮数和最小改善量
-   - 自动保存最佳模型
+1. Early stopping mechanism:
+   - Configurable monitoring metrics (validation accuracy or training loss)
+   - Adjustable patience and minimum improvement threshold
+   - Automatic saving of the best model
 
-2. 损失函数选择：
-   - 交叉熵损失
+2. Loss function selection:
+   - Cross Entropy Loss
    - Focal Loss
-   - 标签平滑
-   - 加权交叉熵
+   - Label Smoothing
+   - Weighted Cross Entropy
    - Dice Loss
